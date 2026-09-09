@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>대멸종 공룡 러너 게임</title>
+  <style>
+    /* 전체 화면 중앙 정렬 및 어두운 배경 */
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #110909;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      color: #ffffff;
+      user-select: none;
+    }
+
+    /* 화면 가운데 사각형 게임 창 (대멸종 컨셉) */
+    #game-box {
+      position: relative;
+      width: 600px;
+      height: 250px;
+      /* 대멸종 느낌의 붉은 불타는 노을 그라데이션 */
+      background: linear-gradient(to bottom, #2b0808 0%, #8b0000 50%, #ff4500 80%, #3a1d00 80%);
+      border: 4px solid #ff4500;
+      box-shadow: 0 0 25px rgba(255, 69, 0, 0.6);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    /* 오른쪽 상단 0.1초 단위 타이머 */
+    #timer {
+      position: absolute;
+      top: 12px;
+      right: 16px;
+      font-size: 20px;
+      font-weight: bold;
+      color: #fff;
+      text-shadow: 2px 2px 4px #000;
+      z-index: 10;
+    }
+
+    /* 공룡 캐릭터 */
+    #dino {
+      position: absolute;
+      bottom: 20px; /* 바닥 위치 */
+      left: 50px;
+      width: 40px;
+      height: 40px;
+      background-color: #2e7d32;
+      border: 2px solid #1b5e20;
+      border-radius: 6px;
+      box-sizing: border-box;
+    }
+
+    /* 공룡 눈 표시 (캐릭터 느낌 부여) */
+    #dino::after {
+      content: '';
+      position: absolute;
+      top: 6px;
+      right: 6px;
+      width: 6px;
+      height: 6px;
+      background-color: #ffffff;
+      border-radius: 50%;
+    }
+
+    /* 선인장 장애물 */
+    #cactus {
+      position: absolute;
+      bottom: 20px;
+      left: 600px; /* 시작 위치 (화면 우측 밖) */
+      width: 24px;
+      height: 45px;
+      background-color: #fbc02d;
+      border: 2px solid #f57f17;
+      border-radius: 4px;
+      box-sizing: border-box;
+    }
+
+    /* 시작 화면 레이어 */
+    #start-screen {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.65);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 20;
+    }
+
+    /* 시작 버튼 */
+    #start-btn {
+      padding: 12px 28px;
+      font-size: 18px;
+      font-weight: bold;
+      color: #ffffff;
+      background-color: #ff4500;
+      border: none;
+      border-radius: 25px;
+      cursor: pointer;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+      transition: all 0.2s;
+    }
+
+    #start-btn:hover {
+      background-color: #ff6600;
+      transform: scale(1.05);
+    }
+
+    /* 안내 문구 */
+    .guide-text {
+      margin-top: 12px;
+      font-size: 14px;
+      color: #ddd;
+    }
+
+    /* 점프 애니메이션 */
+    .jump {
+      animation: jump-around 0.5s ease-out;
+    }
+
+    @keyframes jump-around {
+      0%   { bottom: 20px; }
+      40%  { bottom: 120px; } /* 최고 점프 높이 */
+      50%  { bottom: 120px; }
+      100% { bottom: 20px; }
+    }
+  </style>
+</head>
+<body>
+
+  <div id="game-box">
+    <div id="timer">0.0 초</div>
+    <div id="dino"></div>
+    <div id="cactus"></div>
+
+    <div id="start-screen">
+      <button id="start-btn" onclick="startGame()">게임 시작</button>
+      <div class="guide-text">스페이스바를 눌러 점프하세요!</div>
+    </div>
+  </div>
+
+  <script>
+    const dino = document.getElementById("dino");
+    const cactus = document.getElementById("cactus");
+    const timerDisplay = document.getElementById("timer");
+    const startScreen = document.getElementById("start-screen");
+
+    let isPlaying = false;
+    let isJumping = false;
+    let timeCount = 0.0;
+    
+    let timerLoop = null;
+    let gameLoop = null;
+    let cactusPosition = 600;
+
+    // 스페이스바 입력 감지 (점프)
+    document.addEventListener("keydown", function(event) {
+      if ((event.code === "Space" || event.key === " ") && isPlaying && !isJumping) {
+        event.preventDefault(); // 스페이스바로 인한 스크롤 방지
+        jump();
+      }
+    });
+
+    // 점프 동작
+    function jump() {
+      isJumping = true;
+      dino.classList.add("jump");
+
+      // 0.5초(애니메이션 시간) 후 점프 상태 해제
+      setTimeout(() => {
+        dino.classList.remove("jump");
+        isJumping = false;
+      }, 500);
+    }
+
+    // 게임 시작 함수
+    function startGame() {
+      // 변수 및 화면 초기화
+      isPlaying = true;
+      timeCount = 0.0;
+      cactusPosition = 600;
+      timerDisplay.innerText = "0.0 초";
+      startScreen.style.display = "none";
+
+      // 1. 0.1초 단위 타이머 시작
+      timerLoop = setInterval(() => {
+        timeCount += 0.1;
+        timerDisplay.innerText = timeCount.toFixed(1) + " 초";
+      }, 100);
+
+      // 2. 게임 메인 루프 (장애물 이동 및 충돌 검사)
+      gameLoop = setInterval(() => {
+        // 선인장 이동 (왼쪽으로 이동)
+        cactusPosition -= 6; 
+        
+        // 화면 왼쪽 밖으로 나가면 다시 오른쪽 끝으로 이동
+        if (cactusPosition < -30) {
+          cactusPosition = 600;
+        }
+        cactus.style.left = cactusPosition + "px";
+
+        // 충돌 판정 계산
+        // 공룡의 현재 높이(Y축) 가져오기
+        const dinoBottom = parseInt(window.getComputedStyle(dino).getPropertyValue("bottom"));
+
+        // 공룡 위치: left 50px ~ 90px 범위
+        // 선인장 위치와 공룡 위치가 겹치고, 공룡의 높이가 선인장보다 낮으면 충돌
+        if (cactusPosition > 30 && cactusPosition < 85 && dinoBottom < 60) {
+          gameOver();
+        }
+      }, 20); // 0.02초마다 화면 업데이트
+    }
+
+    // 게임 오버 처리
+    function gameOver() {
+      isPlaying = false;
+      clearInterval(timerLoop);
+      clearInterval(gameLoop);
+
+      alert("게임 오버!\n버틴 시간: " + timeCount.toFixed(1) + "초");
+      
+      // 시작 화면 다시 표시
+      startScreen.style.display = "flex";
+      cactus.style.left = "600px";
+    }
+  </script>
+
+</body>
+</html>
